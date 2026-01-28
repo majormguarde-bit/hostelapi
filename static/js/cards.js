@@ -18,7 +18,7 @@ async function loadProfilesForFilter() {
             profiles.forEach(profile => {
                 const option = document.createElement('option');
                 option.value = profile.id;
-                option.textContent = profile.name;
+                option.textContent = `${profile.name} (${profile.card_count})`;
                 filterProfile.appendChild(option);
             });
         }
