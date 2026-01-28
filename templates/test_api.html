@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Тестирование API HOSTEL_CARDEDIT{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1>Тестирование API HOSTEL_CARDEDIT</h1>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Параметры процедуры</h5>
+            </div>
+            <div class="card-body">
+                <form id="testForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="action" class="form-label">Action (действие):</label>
+                                <select class="form-select" id="action" required>
+                                    <option value="">Выберите действие...</option>
+                                    <option value="0">0 - Получить информацию</option>
+                                    <option value="1">1 - Добавить/обновить карту</option>
+                                    <option value="2">2 - Удалить карту</option>
+                                    <option value="3">3 - Заблокировать карту</option>
+                                    <option value="4">4 - Активировать карту</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="room" class="form-label">Room (номер комнаты):</label>
+                                <input type="number" class="form-control" id="room" placeholder="Например: 1401">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="card_number" class="form-label">Card Number (номер карты):</label>
+                                <input type="number" class="form-control" id="card_number" placeholder="Например: 1446644">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valid_from" class="form-label">Valid From (дата начала):</label>
+                                <input type="date" class="form-control" id="valid_from">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="valid_days" class="form-label">Valid Days (количество дней):</label>
+                                <input type="number" class="form-control" id="valid_days" placeholder="Например: 30">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="dep" class="form-label">Department (отдел):</label>
+                                <input type="text" class="form-control" id="dep" value="ХОСТЕЛ">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="comments" class="form-label">Comments (комментарий):</label>
+                        <textarea class="form-control" id="comments" rows="3" placeholder="Комментарий к карте"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-primary" onclick="testProcedure()">
+                            Вызвать процедуру
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                            Очистить форму
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Результаты -->
+        <div class="card">
+            <div class="card-header">
+                <h5>Результаты</h5>
+            </div>
+            <div class="card-body">
+                <div id="loading" class="spinner-border" role="status" style="display: none;">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+
+                <div id="message" class="alert" role="alert" style="display: none;"></div>
+
+                <div id="resultContainer" style="display: none;">
+                    <h6>Ответ от сервера:</h6>
+                    <pre id="resultJson" style="background-color: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto;"></pre>
+                </div>
+
+                <div id="errorContainer" style="display: none;">
+                    <h6>Ошибка:</h6>
+                    <pre id="errorJson" style="background-color: #ffe6e6; padding: 15px; border-radius: 4px; overflow-x: auto; color: #d32f2f;"></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Примеры запросов -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Примеры запросов</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>1. Получить информацию о карте (action=0)</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadExample(0)">Загрузить пример</button>
+                    <pre style="background-color: #f5f5f5; padding: 10px; margin-top: 10px;">
+Action: 0
+Card Number: 1446644
+                    </pre>
+                </div>
+
+                <div class="mb-3">
+                    <h6>2. Добавить/обновить карту (action=1)</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadExample(1)">Загрузить пример</button>
+                    <pre style="background-color: #f5f5f5; padding: 10px; margin-top: 10px;">
+Action: 1
+Room: 1401
+Card Number: 1446644
+Valid From: (сегодня)
+Valid Days: 30
+Department: ХОСТЕЛ
+Comments: Тестовая карта
+                    </pre>
+                </div>
+
+                <div class="mb-3">
+                    <h6>3. Удалить карту (action=2)</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadExample(2)">Загрузить пример</button>
+                    <pre style="background-color: #f5f5f5; padding: 10px; margin-top: 10px;">
+Action: 2
+Card Number: 1446644
+                    </pre>
+                </div>
+
+                <div class="mb-3">
+                    <h6>4. Заблокировать карту (action=3)</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadExample(3)">Загрузить пример</button>
+                    <pre style="background-color: #f5f5f5; padding: 10px; margin-top: 10px;">
+Action: 3
+Card Number: 1446644
+                    </pre>
+                </div>
+
+                <div class="mb-3">
+                    <h6>5. Активировать карту (action=4)</h6>
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadExample(4)">Загрузить пример</button>
+                    <pre style="background-color: #f5f5f5; padding: 10px; margin-top: 10px;">
+Action: 4
+Card Number: 1446644
+                    </pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+/**
+ * Загрузить пример в форму
+ */
+function loadExample(exampleType) {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Очистить форму
+    resetForm();
+    
+    switch(exampleType) {
+        case 0:
+            // Получить информацию
+            document.getElementById('action').value = '0';
+            document.getElementById('card_number').value = '1446644';
+            break;
+        case 1:
+            // Добавить/обновить
+            document.getElementById('action').value = '1';
+            document.getElementById('room').value = '1401';
+            document.getElementById('card_number').value = '1446644';
+            document.getElementById('valid_from').value = today;
+            document.getElementById('valid_days').value = '30';
+            document.getElementById('dep').value = 'ХОСТЕЛ';
+            document.getElementById('comments').value = 'Тестовая карта';
+            break;
+        case 2:
+            // Удалить
+            document.getElementById('action').value = '2';
+            document.getElementById('card_number').value = '1446644';
+            break;
+        case 3:
+            // Заблокировать
+            document.getElementById('action').value = '3';
+            document.getElementById('card_number').value = '1446644';
+            break;
+        case 4:
+            // Активировать
+            document.getElementById('action').value = '4';
+            document.getElementById('card_number').value = '1446644';
+            break;
+    }
+}
+
+/**
+ * Очистить форму
+ */
+function resetForm() {
+    document.getElementById('testForm').reset();
+    document.getElementById('resultContainer').style.display = 'none';
+    document.getElementById('errorContainer').style.display = 'none';
+    document.getElementById('message').style.display = 'none';
+}
+
+/**
+ * Вызвать процедуру
+ */
+async function testProcedure() {
+    const action = document.getElementById('action').value;
+    
+    if (!action) {
+        showMessage('Выберите действие', 'warning');
+        return;
+    }
+    
+    showLoading();
+    
+    const data = {
+        action: parseInt(action),
+        room: document.getElementById('room').value ? parseInt(document.getElementById('room').value) : null,
+        card_number: document.getElementById('card_number').value ? parseInt(document.getElementById('card_number').value) : null,
+        valid_from: document.getElementById('valid_from').value || null,
+        valid_days: document.getElementById('valid_days').value ? parseInt(document.getElementById('valid_days').value) : null,
+        comments: document.getElementById('comments').value || null,
+        dep: document.getElementById('dep').value || 'ХОСТЕЛ'
+    };
+    
+    try {
+        const response = await fetch('/api/test-procedure', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        hideLoading();
+        
+        if (result.error) {
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('errorJson').textContent = JSON.stringify(result, null, 2);
+            showMessage('Ошибка при вызове процедуры', 'danger');
+        } else {
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('resultJson').textContent = JSON.stringify(result, null, 2);
+            showMessage('Процедура успешно вызвана', 'success');
+        }
+    } catch (error) {
+        hideLoading();
+        document.getElementById('errorContainer').style.display = 'block';
+        document.getElementById('resultContainer').style.display = 'none';
+        document.getElementById('errorJson').textContent = error.message;
+        showMessage('Ошибка при отправке запроса: ' + error.message, 'danger');
+    }
+}
+
+/**
+ * Показать сообщение
+ */
+function showMessage(message, type = 'info') {
+    const messageDiv = document.getElementById('message');
+    messageDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    messageDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    messageDiv.style.display = 'block';
+    
+    setTimeout(() => {
+        messageDiv.style.display = 'none';
+    }, 5000);
+}
+
+/**
+ * Показать индикатор загрузки
+ */
+function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+}
+
+/**
+ * Скрыть индикатор загрузки
+ */
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+}
+
+// Установить дату по умолчанию
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('valid_from').value = today;
+});
+</script>
+{% endblock %}

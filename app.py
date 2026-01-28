@@ -125,6 +125,43 @@ def logout():
     session.clear()
     return redirect(url_for('select_database'))
 
+@app.route('/test-api')
+def test_api():
+    """Страница тестирования API"""
+    if 'user_id' not in session:
+        if 'db_path' not in session:
+            return redirect(url_for('select_database'))
+        return redirect(url_for('login'))
+    return render_template('test_api.html')
+
+@app.route('/api/test-procedure', methods=['POST'])
+def test_procedure():
+    """Тестировать процедуру HOSTEL_CARDEDIT"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.get_json()
+    
+    try:
+        global db_manager
+        if db_manager is None:
+            db_manager = DatabaseManager(session['db_path'])
+        
+        result = db_manager.call_cardedit_procedure(
+            action=data.get('action'),
+            room=data.get('room'),
+            card_number=data.get('card_number'),
+            valid_from=data.get('valid_from'),
+            valid_days=data.get('valid_days'),
+            comments=data.get('comments'),
+            dep=data.get('dep', 'ХОСТЕЛ')
+        )
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Ошибка при тестировании процедуры: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/profiles', methods=['GET'])
 def get_profiles():
     """Получить список всех профилей доступа"""
