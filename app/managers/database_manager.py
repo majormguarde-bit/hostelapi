@@ -474,9 +474,12 @@ class DatabaseManager:
                     c.ACTIVED,
                     c.COMMENTS,
                     c.PROFILEID,
-                    p.NAME as PROFILE_NAME
+                    p.NAME as PROFILE_NAME,
+                    pe.FNAME as ROOM,
+                    pe.LNAME as DEP
                 FROM CARDS c
                 LEFT JOIN PROFILE p ON c.PROFILEID = p.PROFILEID
+                LEFT JOIN PEOPLE pe ON c.PEOPLEID = pe.PEOPLEID
                 WHERE c.CARDSID = ?
             """
 
@@ -503,7 +506,9 @@ class DatabaseManager:
                 'status': row[4],
                 'comments': row[5],
                 'profile_id': row[6],
-                'profile_name': row[7]
+                'profile_name': row[7],
+                'room': row[8],
+                'dep': row[9]
             }
 
         except Exception as e:
