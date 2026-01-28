@@ -399,10 +399,10 @@ class DatabaseManager:
 
     def get_all_profiles(self) -> List[Dict]:
         """
-        Получить список всех профилей доступа
+        Получить список всех профилей доступа с количеством карт
         
         Returns:
-            List[Dict]: Список профилей с ID и названием
+            List[Dict]: Список профилей с ID, названием и количеством карт
         """
         try:
             if not self.connection:
@@ -412,9 +412,11 @@ class DatabaseManager:
             cursor = self.connection.cursor()
             
             query = """
-                SELECT PROFILEID, NAME
-                FROM PROFILE
-                ORDER BY NAME
+                SELECT p.PROFILEID, p.NAME, COUNT(c.CARDSID) as card_count
+                FROM PROFILE p
+                LEFT JOIN CARDS c ON p.PROFILEID = c.PROFILEID
+                GROUP BY p.PROFILEID, p.NAME
+                ORDER BY p.NAME
             """
 
             cursor.execute(query)
@@ -425,7 +427,8 @@ class DatabaseManager:
             for row in rows:
                 profiles.append({
                     'id': row[0],
-                    'name': row[1]
+                    'name': row[1],
+                    'card_count': row[2] if row[2] else 0
                 })
 
             return profiles

@@ -215,7 +215,7 @@ async function showAddCardForm() {
             profiles.forEach(profile => {
                 const option = document.createElement('option');
                 option.value = profile.id;
-                option.textContent = profile.name;
+                option.textContent = `${profile.name} (${profile.card_count})`;
                 profileSelect.appendChild(option);
             });
         }
@@ -252,7 +252,7 @@ async function showEditCardForm(cardId) {
             profiles.forEach(profile => {
                 const option = document.createElement('option');
                 option.value = profile.id;
-                option.textContent = profile.name;
+                option.textContent = `${profile.name} (${profile.card_count})`;
                 profileSelect.appendChild(option);
             });
         }
@@ -391,7 +391,7 @@ async function editProfile(cardId, currentProfile) {
                         <div class="mb-3">
                             <label for="profileSelect" class="form-label">Выберите профиль:</label>
                             <select class="form-select" id="profileSelect">
-                                ${profiles.map(p => `<option value="${p.id}" ${p.name === currentProfile ? 'selected' : ''}>${p.name}</option>`).join('')}
+                                ${profiles.map(p => `<option value="${p.id}" ${p.name === currentProfile ? 'selected' : ''}>${p.name} (${p.card_count})</option>`).join('')}
                             </select>
                         </div>
                     </div>
