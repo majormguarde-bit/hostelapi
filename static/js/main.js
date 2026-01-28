@@ -85,6 +85,7 @@ function validateCardForm() {
     const cardNumber = document.getElementById('card_number').value;
     const validFrom = document.getElementById('valid_from').value;
     const validDays = document.getElementById('valid_days').value;
+    const profileId = document.getElementById('profile_id').value;
 
     if (!room || room <= 0) {
         errors.room = 'Номер комнаты должен быть больше 0';
@@ -100,6 +101,10 @@ function validateCardForm() {
 
     if (!validDays || validDays <= 0) {
         errors.valid_days = 'Количество дней должно быть больше 0';
+    }
+
+    if (!profileId) {
+        errors.profile_id = 'Профиль доступа обязателен';
     }
 
     return {

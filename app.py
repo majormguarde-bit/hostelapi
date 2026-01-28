@@ -207,6 +207,7 @@ def create_card():
         if db_manager is None:
             db_manager = DatabaseManager(session['db_path'])
         
+        # Сначала создаем карту через процедуру
         result = db_manager.call_cardedit_procedure(
             action=1,
             room=data.get('room'),
@@ -216,6 +217,12 @@ def create_card():
             comments=data.get('comments'),
             dep=data.get('dep', 'ХОСТЕЛ')
         )
+        
+        # Если карта успешно создана и указан профиль, обновляем профиль
+        if result.get('card_id') and result.get('card_id') > 0 and data.get('profile_id'):
+            profile_result = db_manager.update_card_profile(result['card_id'], data.get('profile_id'))
+            if not profile_result.get('success'):
+                logger.warning(f"Не удалось обновить профиль для карты {result['card_id']}")
         
         return jsonify(result)
     except Exception as e:
@@ -259,6 +266,12 @@ def update_card(card_id):
             comments=data.get('comments'),
             dep=data.get('dep', 'ХОСТЕЛ')
         )
+        
+        # Если указан профиль, обновляем его
+        if result.get('card_id') and result.get('card_id') > 0 and data.get('profile_id'):
+            profile_result = db_manager.update_card_profile(result['card_id'], data.get('profile_id'))
+            if not profile_result.get('success'):
+                logger.warning(f"Не удалось обновить профиль для карты {result['card_id']}")
         
         return jsonify(result)
     except Exception as e:

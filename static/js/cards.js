@@ -195,7 +195,7 @@ function displayCards(cards) {
 /**
  * Показать форму добавления карты
  */
-function showAddCardForm() {
+async function showAddCardForm() {
     clearValidationErrors();
     document.getElementById('cardForm').reset();
     document.getElementById('cardModalTitle').textContent = 'Добавить карту';
@@ -204,6 +204,24 @@ function showAddCardForm() {
     // Установить дату на сегодня
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('valid_from').value = today;
+
+    // Загрузить профили
+    try {
+        const profiles = await makeRequest('/profiles', 'GET');
+        const profileSelect = document.getElementById('profile_id');
+        profileSelect.innerHTML = '<option value="">Выберите профиль...</option>';
+        
+        if (Array.isArray(profiles)) {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.id;
+                option.textContent = profile.name;
+                profileSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        showMessage('Ошибка при загрузке профилей: ' + error.message, 'warning');
+    }
 
     const modal = new bootstrap.Modal(document.getElementById('cardModal'));
     modal.show();
@@ -224,6 +242,20 @@ async function showEditCardForm(cardId) {
         document.getElementById('valid_days').value = card.valid_days || '';
         document.getElementById('comments').value = card.comments || '';
         document.getElementById('dep').value = card.dep || 'ХОСТЕЛ';
+
+        // Загрузить профили
+        const profiles = await makeRequest('/profiles', 'GET');
+        const profileSelect = document.getElementById('profile_id');
+        profileSelect.innerHTML = '<option value="">Выберите профиль...</option>';
+        
+        if (Array.isArray(profiles)) {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.id;
+                option.textContent = profile.name;
+                profileSelect.appendChild(option);
+            });
+        }
 
         document.getElementById('cardModalTitle').textContent = 'Редактировать карту';
         currentCardId = cardId;
@@ -256,6 +288,7 @@ async function saveCard() {
         card_number: parseInt(document.getElementById('card_number').value),
         valid_from: document.getElementById('valid_from').value,
         valid_days: parseInt(document.getElementById('valid_days').value),
+        profile_id: parseInt(document.getElementById('profile_id').value),
         comments: document.getElementById('comments').value,
         dep: document.getElementById('dep').value
     };
