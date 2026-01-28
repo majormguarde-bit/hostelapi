@@ -3,20 +3,144 @@
  */
 
 let currentCardId = null;
+let currentPage = 1;
+let currentFilters = {};
 
 /**
- * Загрузить список всех карт
+ * Загрузить профили в фильтр при загрузке страницы
  */
-async function loadCards() {
+async function loadProfilesForFilter() {
+    try {
+        const profiles = await makeRequest('/profiles', 'GET');
+        const filterProfile = document.getElementById('filterProfile');
+        
+        if (Array.isArray(profiles)) {
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.id;
+                option.textContent = profile.name;
+                filterProfile.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Ошибка при загрузке профилей для фильтра:', error);
+    }
+}
+
+/**
+ * Загрузить список карт с текущими фильтрами и пагинацией
+ */
+async function loadCards(page = 1) {
     showLoading();
     try {
-        const cards = await makeRequest('/cards', 'GET');
-        displayCards(cards);
+        // Собираем параметры запроса
+        let url = `/cards?page=${page}&per_page=10`;
+        
+        if (currentFilters.card_number) {
+            url += `&card_number=${encodeURIComponent(currentFilters.card_number)}`;
+        }
+        if (currentFilters.profile_id) {
+            url += `&profile_id=${currentFilters.profile_id}`;
+        }
+        if (currentFilters.status !== undefined && currentFilters.status !== '') {
+            url += `&status=${currentFilters.status}`;
+        }
+        
+        const result = await makeRequest(url, 'GET');
+        
+        if (result.error) {
+            showMessage('Ошибка при загрузке карт: ' + result.error, 'danger');
+            hideLoading();
+            return;
+        }
+        
+        currentPage = page;
+        displayCards(result.cards);
+        displayPagination(result);
         hideLoading();
     } catch (error) {
         showMessage('Ошибка при загрузке карт: ' + error.message, 'danger');
         hideLoading();
     }
+}
+
+/**
+ * Применить фильтры
+ */
+function applyFilters() {
+    currentFilters = {
+        card_number: document.getElementById('filterCardNumber').value,
+        profile_id: document.getElementById('filterProfile').value,
+        status: document.getElementById('filterStatus').value
+    };
+    loadCards(1);
+}
+
+/**
+ * Отобразить пагинатор
+ */
+function displayPagination(result) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    const pagination = document.getElementById('pagination');
+    
+    if (result.total_pages <= 1) {
+        paginationContainer.style.display = 'none';
+        return;
+    }
+    
+    paginationContainer.style.display = 'block';
+    pagination.innerHTML = '';
+    
+    // Кнопка "Предыдущая"
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${result.page === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadCards(${result.page - 1}); return false;">Предыдущая</a>`;
+    pagination.appendChild(prevLi);
+    
+    // Номера страниц
+    const startPage = Math.max(1, result.page - 2);
+    const endPage = Math.min(result.total_pages, result.page + 2);
+    
+    if (startPage > 1) {
+        const firstLi = document.createElement('li');
+        firstLi.className = 'page-item';
+        firstLi.innerHTML = `<a class="page-link" href="#" onclick="loadCards(1); return false;">1</a>`;
+        pagination.appendChild(firstLi);
+        
+        if (startPage > 2) {
+            const dotsLi = document.createElement('li');
+            dotsLi.className = 'page-item disabled';
+            dotsLi.innerHTML = `<span class="page-link">...</span>`;
+            pagination.appendChild(dotsLi);
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === result.page ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="loadCards(${i}); return false;">${i}</a>`;
+        pagination.appendChild(li);
+    }
+    
+    if (endPage < result.total_pages) {
+        if (endPage < result.total_pages - 1) {
+            const dotsLi = document.createElement('li');
+            dotsLi.className = 'page-item disabled';
+            dotsLi.innerHTML = `<span class="page-link">...</span>`;
+            pagination.appendChild(dotsLi);
+        }
+        
+        const lastLi = document.createElement('li');
+        lastLi.className = 'page-item';
+        lastLi.innerHTML = `<a class="page-link" href="#" onclick="loadCards(${result.total_pages}); return false;">${result.total_pages}</a>`;
+        pagination.appendChild(lastLi);
+    }
+    
+    // Кнопка "Следующая"
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${result.page === result.total_pages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadCards(${result.page + 1}); return false;">Следующая</a>`;
+    pagination.appendChild(nextLi);
 }
 
 /**
@@ -155,8 +279,8 @@ async function saveCard() {
             // Закрыть модальное окно
             bootstrap.Modal.getInstance(document.getElementById('cardModal')).hide();
             
-            // Перезагрузить список карт
-            loadCards();
+            // Перезагрузить список карт с первой страницы
+            loadCards(1);
         }
         hideLoading();
     } catch (error) {
@@ -193,8 +317,8 @@ async function confirmDelete() {
             // Закрыть модальное окно
             bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
             
-            // Перезагрузить список карт
-            loadCards();
+            // Перезагрузить список карт с текущей страницы
+            loadCards(currentPage);
         }
         hideLoading();
     } catch (error) {
@@ -233,14 +357,13 @@ async function editProfile(cardId, currentProfile) {
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="profileSelect" class="form-label">Выберите профиль:</label>
-                            <select class="form-select" id="profileSelect">
+                            <select class="form-select" id="profileSelect" onchange="saveProfile(${cardId})">
                                 ${profiles.map(p => `<option value="${p.id}" ${p.name === currentProfile ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                        <button type="button" class="btn btn-primary" onclick="saveProfile(${cardId})">Сохранить</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                     </div>
                 </div>
             </div>
@@ -283,13 +406,16 @@ async function saveProfile(cardId) {
             showMessage('Профиль успешно обновлен', 'success');
             
             // Закрыть модальное окно
-            const modal = bootstrap.Modal.getInstance(document.getElementById('profileModal'));
-            if (modal) {
-                modal.hide();
+            const profileModal = document.getElementById('profileModal');
+            if (profileModal) {
+                const modal = bootstrap.Modal.getInstance(profileModal);
+                if (modal) {
+                    modal.hide();
+                }
             }
             
-            // Перезагрузить список карт
-            loadCards();
+            // Перезагрузить список карт с текущей страницы
+            await loadCards(currentPage);
         } else {
             showMessage('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'danger');
         }

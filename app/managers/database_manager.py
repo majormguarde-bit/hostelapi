@@ -152,18 +152,23 @@ class DatabaseManager:
             logger.error(f"Ошибка при вызове UPD_CARDSLIST: {str(e)}")
             return False
 
-    def get_all_cards(self) -> List[Dict]:
+    def get_all_cards(self, page: int = 1, per_page: int = 10, filters: Dict = None) -> Dict:
         """
-        Получить список всех карт с профилем доступа
+        Получить список карт с фильтрацией и пагинацией
         
+        Args:
+            page: Номер страницы (начиная с 1)
+            per_page: Количество карт на странице
+            filters: Словарь с фильтрами {column: value}
+            
         Returns:
-            List[Dict]: Список карт с их атрибутами и профилем доступа
+            Dict с картами, общим количеством и информацией о пагинации
         """
         try:
             if not self.connection:
                 self.connect()
 
-            # PROFILEID в CARDS ссылается на PROFILEID в PROFILE
+            # Базовый запрос
             query = """
                 SELECT 
                     c.CARDSID,
@@ -178,10 +183,37 @@ class DatabaseManager:
                     p.PROF_TYPE
                 FROM PROFILE p
                 INNER JOIN CARDS c ON p.PROFILEID = c.PROFILEID
-                ORDER BY c.CARDSID DESC
+                WHERE 1=1
             """
-
-            self.cursor.execute(query)
+            
+            params = []
+            
+            # Применяем фильтры
+            if filters:
+                if 'card_number' in filters and filters['card_number']:
+                    query += " AND c.CARDNUM LIKE ?"
+                    params.append(f"%{filters['card_number']}%")
+                
+                if 'profile_id' in filters and filters['profile_id']:
+                    query += " AND c.PROFILEID = ?"
+                    params.append(int(filters['profile_id']))
+                
+                if 'status' in filters and filters['status'] is not None:
+                    query += " AND c.ACTIVED = ?"
+                    params.append(int(filters['status']))
+            
+            # Получаем общее количество записей
+            count_query = f"SELECT COUNT(*) FROM ({query}) as cnt"
+            self.cursor.execute(count_query, params)
+            total_count = self.cursor.fetchone()[0]
+            
+            # Добавляем сортировку и пагинацию
+            query += " ORDER BY c.CARDSID DESC"
+            
+            offset = (page - 1) * per_page
+            query += f" ROWS {offset + 1} TO {offset + per_page}"
+            
+            self.cursor.execute(query, params)
             rows = self.cursor.fetchall()
 
             cards = []
@@ -200,11 +232,26 @@ class DatabaseManager:
                     'profile_type': row[9]
                 })
 
-            return cards
+            total_pages = (total_count + per_page - 1) // per_page
+            
+            return {
+                'cards': cards,
+                'total': total_count,
+                'page': page,
+                'per_page': per_page,
+                'total_pages': total_pages
+            }
 
         except Exception as e:
             logger.error(f"Ошибка при получении списка карт: {str(e)}")
-            return []
+            return {
+                'cards': [],
+                'total': 0,
+                'page': 1,
+                'per_page': per_page,
+                'total_pages': 0,
+                'error': str(e)
+            }
 
     def authenticate_user(self, username: str, password: str) -> Optional[Dict]:
         """

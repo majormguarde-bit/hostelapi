@@ -167,7 +167,7 @@ def update_card_profile(card_id):
 
 @app.route('/cards', methods=['GET'])
 def get_cards():
-    """Получить список всех карт"""
+    """Получить список карт с фильтрацией и пагинацией"""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -176,8 +176,21 @@ def get_cards():
         if db_manager is None:
             db_manager = DatabaseManager(session['db_path'])
         
-        cards = db_manager.get_all_cards()
-        return jsonify(cards)
+        # Получаем параметры пагинации и фильтрации
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        
+        # Собираем фильтры
+        filters = {}
+        if request.args.get('card_number'):
+            filters['card_number'] = request.args.get('card_number')
+        if request.args.get('profile_id'):
+            filters['profile_id'] = request.args.get('profile_id')
+        if request.args.get('status') is not None and request.args.get('status') != '':
+            filters['status'] = request.args.get('status', type=int)
+        
+        result = db_manager.get_all_cards(page=page, per_page=per_page, filters=filters)
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
