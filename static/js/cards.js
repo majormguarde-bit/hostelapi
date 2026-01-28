@@ -363,7 +363,7 @@ async function editProfile(cardId, currentProfile) {
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
                     </div>
                 </div>
             </div>
@@ -373,8 +373,39 @@ async function editProfile(cardId, currentProfile) {
         
         // Прикрепляем событие change к выпадающему списку
         const profileSelect = modal.querySelector('#profileSelect');
-        profileSelect.addEventListener('change', function() {
-            saveProfile(cardId);
+        profileSelect.addEventListener('change', async function() {
+            const newProfileId = this.value;
+            
+            if (!newProfileId) {
+                showMessage('Выберите профиль', 'warning');
+                return;
+            }
+            
+            showLoading();
+            try {
+                const result = await makeRequest(`/cards/${cardId}/profile`, 'PUT', {
+                    profile_id: parseInt(newProfileId)
+                });
+                
+                if (result.success) {
+                    showMessage('Профиль успешно обновлен', 'success');
+                    
+                    // Закрыть модальное окно
+                    const profileModal = bootstrap.Modal.getInstance(modal);
+                    if (profileModal) {
+                        profileModal.hide();
+                    }
+                    
+                    // Применить текущие фильтры и перезагрузить список
+                    applyFilters();
+                } else {
+                    showMessage('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'danger');
+                }
+                hideLoading();
+            } catch (error) {
+                showMessage('Ошибка при сохранении профиля: ' + error.message, 'danger');
+                hideLoading();
+            }
         });
         
         const profileModal = new bootstrap.Modal(modal);
@@ -390,45 +421,3 @@ async function editProfile(cardId, currentProfile) {
     }
 }
 
-/**
- * Сохранить новый профиль для карты
- * @param {number} cardId - ID карты
- */
-async function saveProfile(cardId) {
-    const profileSelect = document.getElementById('profileSelect');
-    const newProfileId = profileSelect.value;
-    
-    if (!newProfileId) {
-        showMessage('Выберите профиль', 'warning');
-        return;
-    }
-    
-    showLoading();
-    try {
-        const result = await makeRequest(`/cards/${cardId}/profile`, 'PUT', {
-            profile_id: parseInt(newProfileId)
-        });
-        
-        if (result.success) {
-            showMessage('Профиль успешно обновлен', 'success');
-            
-            // Закрыть модальное окно
-            const profileModal = document.getElementById('profileModal');
-            if (profileModal) {
-                const modal = bootstrap.Modal.getInstance(profileModal);
-                if (modal) {
-                    modal.hide();
-                }
-            }
-            
-            // Применить текущие фильтры и перезагрузить список
-            applyFilters();
-        } else {
-            showMessage('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'danger');
-        }
-        hideLoading();
-    } catch (error) {
-        showMessage('Ошибка при сохранении профиля: ' + error.message, 'danger');
-        hideLoading();
-    }
-}
