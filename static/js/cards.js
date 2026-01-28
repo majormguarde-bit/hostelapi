@@ -357,7 +357,7 @@ async function editProfile(cardId, currentProfile) {
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="profileSelect" class="form-label">Выберите профиль:</label>
-                            <select class="form-select" id="profileSelect" onchange="saveProfile(${cardId})">
+                            <select class="form-select" id="profileSelect">
                                 ${profiles.map(p => `<option value="${p.id}" ${p.name === currentProfile ? 'selected' : ''}>${p.name}</option>`).join('')}
                             </select>
                         </div>
@@ -370,6 +370,13 @@ async function editProfile(cardId, currentProfile) {
         `;
         
         document.body.appendChild(modal);
+        
+        // Прикрепляем событие change к выпадающему списку
+        const profileSelect = modal.querySelector('#profileSelect');
+        profileSelect.addEventListener('change', function() {
+            saveProfile(cardId);
+        });
+        
         const profileModal = new bootstrap.Modal(modal);
         profileModal.show();
         
