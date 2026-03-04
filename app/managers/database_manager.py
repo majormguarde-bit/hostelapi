@@ -5,10 +5,43 @@ DatabaseManager для работы с базой данных Firebird.
 
 import fdb
 import logging
+import os
+import sys
+import platform
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
+
+# Попытка загрузить fbclient.dll из переменных окружения или стандартных путей
+def load_fbclient():
+    """
+    Пытается загрузить библиотеку клиента Firebird (fbclient.dll/libfbclient.so).
+    Проверяет переменную окружения FB_LIBRARY_PATH, затем локальную директорию.
+    """
+    try:
+        # 1. Проверяем переменную окружения
+        fb_lib_path = os.environ.get('FB_LIBRARY_PATH')
+        if fb_lib_path and os.path.exists(fb_lib_path):
+            logger.info(f"Loading Firebird client from env: {fb_lib_path}")
+            fdb.load_api(fb_lib_path)
+            return
+
+        # 2. Проверяем текущую директорию (для удобства deployment)
+        local_lib = os.path.join(os.getcwd(), 'fbclient.dll')
+        if os.path.exists(local_lib):
+            logger.info(f"Loading Firebird client from local dir: {local_lib}")
+            fdb.load_api(local_lib)
+            return
+
+        # 3. Проверяем стандартные пути (x64/x86 в зависимости от Python)
+        # Это происходит автоматически внутри fdb, но можно попробовать явно, если нужно
+        
+    except Exception as e:
+        logger.warning(f"Failed to explicitly load Firebird client library: {e}")
+
+# Вызываем загрузку при импорте модуля
+load_fbclient()
 
 
 class DatabaseManager:
@@ -77,6 +110,20 @@ class DatabaseManager:
             return True
         except Exception as e:
             logger.error(f"Ошибка подключения к БД: {str(e)}")
+            
+            # Обработка ошибки загрузки DLL (WinError 193)
+            error_str = str(e)
+            if "WinError 193" in error_str:
+                is_64bit = sys.maxsize > 2**32
+                py_arch = "64-bit" if is_64bit else "32-bit"
+                msg = (
+                    f"Ошибка: Несовпадение архитектуры Python ({py_arch}) и библиотеки Firebird Client (fbclient.dll).\n"
+                    f"Убедитесь, что установлена версия Firebird Client той же разрядности, что и Python.\n"
+                    f"Попробуйте установить переменную окружения FB_LIBRARY_PATH, указывающую на правильный fbclient.dll."
+                )
+                logger.error(msg)
+                raise Exception(msg) from e
+                
             raise
 
     def disconnect(self) -> None:
